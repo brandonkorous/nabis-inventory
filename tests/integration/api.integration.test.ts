@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import { registerInventoryRoutes } from '../../services/inventory-api/src/routes/inventory';
 import {
      setupTestDb,

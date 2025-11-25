@@ -113,6 +113,7 @@ describe('InventoryService - Concurrency', () => {
                await Promise.all(promises);
 
                // Batch 1 should still have all quantity locked
+               const available = await getAvailableQuantity(batchId);
 
                // Should have processed transactions serially, preventing oversell
                expect(available).toBeGreaterThanOrEqual(0);

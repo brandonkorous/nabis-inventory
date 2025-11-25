@@ -3,6 +3,7 @@ import { withTransaction } from '@nabis/shared/src/db/client';
 import { InventoryService } from '@nabis/shared/src/services/inventory-service';
 import { DomainError } from '@nabis/shared/src/utils/errors';
 import { logger } from '@nabis/shared/src/utils/logger';
+import type { InventoryBatch } from '@nabis/shared/src/types/inventory.types';
 import {
      reserveInventorySchema,
      releaseInventorySchema,
@@ -121,29 +122,21 @@ export async function registerInventoryRoutes(app: FastifyInstance) {
                          );
 
                          const totalAvailable = batches.reduce(
-                              (sum: number, batch: { availableQuantity: number }) =>
-                                   sum + batch.availableQuantity,
+                              (sum: number, batch: InventoryBatch) => sum + batch.availableQuantity,
                               0
                          );
 
                          reply.send({
                               skuCode: params.sku,
                               totalAvailable,
-                              batches: batches.map(
-                                   (b: {
-                                        id: number;
-                                        externalBatchId: string;
-                                        lotNumber: string;
-                                        availableQuantity: number;
-                                   }) => ({
-                                        id: b.id,
-                                        externalBatchId: b.externalBatchId,
-                                        lotNumber: b.lotNumber,
-                                        availableQuantity: b.availableQuantity,
-                                        totalQuantity: b.totalQuantity,
-                                        expiresAt: b.expiresAt?.toISOString(),
-                                   })
-                              ),
+                              batches: batches.map((b: InventoryBatch) => ({
+                                   id: b.id,
+                                   externalBatchId: b.externalBatchId,
+                                   lotNumber: b.lotNumber,
+                                   availableQuantity: b.availableQuantity,
+                                   totalQuantity: b.totalQuantity,
+                                   expiresAt: b.expiresAt?.toISOString(),
+                              })),
                          });
                     });
                } catch (error) {

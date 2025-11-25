@@ -294,11 +294,8 @@ describe('Admin API - Integration Tests', () => {
      describe('Error handling', () => {
           it('should handle unexpected errors in WMS sync endpoint', async () => {
                const messagingClientModule = await import('@nabis/shared/src/messaging/client');
-               const originalGetChannel = messagingClientModule.getChannel;
-
-               // Mock to throw a non-standard error
-               (messagingClientModule as { getChannel: unknown }).getChannel = jest
-                    .fn()
+               const getChannelSpy = jest
+                    .spyOn(messagingClientModule, 'getChannel')
                     .mockRejectedValue(new Error('RabbitMQ connection lost'));
 
                const response = await app.inject({
@@ -317,7 +314,7 @@ describe('Admin API - Integration Tests', () => {
                expect(body.message).toBe('Failed to queue sync request');
 
                // Restore original method
-               (messagingClientModule as { getChannel: unknown }).getChannel = originalGetChannel;
+               getChannelSpy.mockRestore();
           });
 
           it('should handle unexpected errors in sync status endpoint', async () => {
