@@ -39,11 +39,22 @@ jobs:
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+            - name: Install kubelogin
+              run: |
+                  curl -LO https://github.com/Azure/kubelogin/releases/download/v0.0.32/kubelogin-linux-amd64.zip
+                  unzip kubelogin-linux-amd64.zip
+                  sudo mv bin/linux_amd64/kubelogin /usr/local/bin/
+                  sudo chmod +x /usr/local/bin/kubelogin
+
             - name: Set AKS context
               uses: azure/aks-set-context@v3
               with:
                   resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
                   cluster-name: ${{ inputs.environment == 'production' && secrets.AKS_CLUSTER_NAME_PROD || secrets.AKS_CLUSTER_NAME_STAGING }}
+
+            - name: Convert kubeconfig for Azure AD
+              run: |
+                  kubelogin convert-kubeconfig -l azurecli
 
             - name: Set namespace
               id: namespace
@@ -148,22 +159,22 @@ jobs:
                   echo "Testing health endpoint at $API_URL/health"
                   curl -f "$API_URL/health" || echo "Health check failed (may not be exposed yet)"
 
-            - name: Notify Slack
-              if: always()
-              uses: slackapi/slack-github-action@v1
-              with:
-                  payload: |
-                      {
-                        "text": "${{ inputs.environment }} deployment ${{ job.status }}",
-                        "blocks": [
-                          {
-                            "type": "section",
-                            "text": {
-                              "type": "mrkdwn",
-                              "text": "*${{ inputs.environment }} Deployment*\nStatus: ${{ job.status }}\nImage Tag: ${{ inputs.image_tag }}\nDeployed by: ${{ github.actor }}"
-                            }
-                          }
-                        ]
-                      }
-              env:
-                  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            # - name: Notify Slack
+            #   if: always()
+            #   uses: slackapi/slack-github-action@v1
+            #   with:
+            #       payload: |
+            #           {
+            #             "text": "${{ inputs.environment }} deployment ${{ job.status }}",
+            #             "blocks": [
+            #               {
+            #                 "type": "section",
+            #                 "text": {
+            #                   "type": "mrkdwn",
+            #                   "text": "*${{ inputs.environment }} Deployment*\nStatus: ${{ job.status }}\nImage Tag: ${{ inputs.image_tag }}\nDeployed by: ${{ github.actor }}"
+            #                 }
+            #               }
+            #             ]
+            #           }
+            #   env:
+            #       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
