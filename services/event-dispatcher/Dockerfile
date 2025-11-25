@@ -39,7 +39,7 @@ COPY package*.json ./
 # Copy built artifacts
 COPY --from=builder /app/services/shared/dist ./services/shared/dist
 COPY --from=builder /app/services/shared/package.json ./services/shared/
-COPY --from=builder /app/services/shared/src/db/migrations ./services/shared/src/db/migrations
+COPY --from=builder /app/services/shared/src/db/migrations ./services/shared/dist/db/migrations
 COPY --from=builder /app/services/event-dispatcher/dist ./services/event-dispatcher/dist
 COPY --from=builder /app/services/event-dispatcher/package.json ./services/event-dispatcher/
 
