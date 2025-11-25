@@ -29,7 +29,7 @@ data:
   AMQP_PREFETCH: '10'
 
   # WMS Client
-  WMS_CLIENT_TYPE: 'http'
+  WMS_CLIENT_TYPE: 'mock'
   WMS_RATE_LIMIT_PER_MINUTE: '60'
 
   # Observability
