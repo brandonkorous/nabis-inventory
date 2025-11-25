@@ -10,10 +10,6 @@ on:
                 options:
                     - staging
                     - production
-            image_tag:
-                description: "Image tag to deploy (e.g., main-a1b2c3d4 or develop-x1y2z3w4)"
-                required: true
-                type: string
             run_migrations:
                 description: "Run database migrations"
                 required: false
@@ -26,13 +22,31 @@ jobs:
         runs-on: ubuntu-latest
         environment:
             name: ${{ inputs.environment }}
-            url: ${{ inputs.environment == 'production' && 'https://inventory-api.brandonkorous.com' || 'https://staging-inventory-api.brandonkorous.com' }}
+            url: ${{ inputs.environment == 'production' && 'https://nabis.brandonkorous.com' || 'https://staging-nabis.brandonkorous.com' }}
         permissions:
             contents: read
             id-token: write
 
         steps:
             - uses: actions/checkout@v4
+
+            - name: Determine image tag
+              id: image-tag
+              run: |
+                  # Use latest from main for production, develop for staging
+                  if [[ "${{ inputs.environment }}" == "production" ]]; then
+                    BRANCH="main"
+                  else
+                    BRANCH="develop"
+                  fi
+
+                  # Get the latest commit SHA from the branch
+                  COMMIT_SHA=$(git rev-parse ${BRANCH})
+                  SHORT_SHA=${COMMIT_SHA:0:7}
+                  IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+                  echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+                  echo "Deploying image tag: ${IMAGE_TAG}"
 
             - name: Azure Login
               uses: azure/login@v2
@@ -88,9 +102,21 @@ jobs:
                   kubectl apply -f k8s/infrastructure/postgres-production.yaml
                   kubectl apply -f k8s/infrastructure/rabbitmq-production.yaml
 
-                  echo "Waiting for infrastructure to be ready..."
-                  kubectl wait --for=condition=ready pod -l app=postgres -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
-                  kubectl wait --for=condition=ready pod -l app=rabbitmq -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
+                  echo "Checking infrastructure status..."
+                  # Check if pods exist and are running
+                  if kubectl get pods -l app=postgres -n ${{ steps.namespace.outputs.namespace }} 2>/dev/null | grep -q Running; then
+                    echo "Postgres pod already running"
+                  else
+                    echo "Waiting for Postgres to be ready..."
+                    kubectl wait --for=condition=ready pod -l app=postgres -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
+                  fi
+
+                  if kubectl get pods -l app=rabbitmq -n ${{ steps.namespace.outputs.namespace }} 2>/dev/null | grep -q Running; then
+                    echo "RabbitMQ pod already running"
+                  else
+                    echo "Waiting for RabbitMQ to be ready..."
+                    kubectl wait --for=condition=ready pod -l app=rabbitmq -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
+                  fi
 
                   echo "Infrastructure deployed successfully"
 
@@ -115,7 +141,7 @@ jobs:
                           - name: acr-secret
                         containers:
                           - name: migration
-                            image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }}
+                            image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ steps.image-tag.outputs.tag }}
                             command: ["npm", "run", "migrate"]
                             envFrom:
                               - secretRef:
@@ -164,23 +190,23 @@ jobs:
 
                   # Update deployments with the specific image tag
                   kubectl set image deployment/inventory-api \
-                    inventory-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }} \
+                    inventory-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ steps.image-tag.outputs.tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
                   kubectl set image deployment/admin-api \
-                    admin-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-admin-api:${{ inputs.image_tag }} \
+                    admin-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-admin-api:${{ steps.image-tag.outputs.tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
                   kubectl set image deployment/event-dispatcher \
-                    event-dispatcher=${{ secrets.ACR_LOGIN_SERVER }}/nabis-event-dispatcher:${{ inputs.image_tag }} \
+                    event-dispatcher=${{ secrets.ACR_LOGIN_SERVER }}/nabis-event-dispatcher:${{ steps.image-tag.outputs.tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
                   kubectl set image deployment/wms-outbound-worker \
-                    wms-outbound-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-outbound-worker:${{ inputs.image_tag }} \
+                    wms-outbound-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-outbound-worker:${{ steps.image-tag.outputs.tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
                   kubectl set image deployment/wms-sync-worker \
-                    wms-sync-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-sync-worker:${{ inputs.image_tag }} \
+                    wms-sync-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-sync-worker:${{ steps.image-tag.outputs.tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
             - name: Wait for rollout

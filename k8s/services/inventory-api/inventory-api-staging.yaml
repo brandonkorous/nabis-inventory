@@ -84,7 +84,7 @@ spec:
     kind: Deployment
     name: inventory-api
   minreplicas: 1
-  maxReplicas: 5
+  maxReplicas: 1
   metrics:
     - type: Resource
       resource:
