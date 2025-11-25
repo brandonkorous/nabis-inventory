@@ -4,6 +4,7 @@ import {
      InsufficientInventoryError,
      BatchNotFoundError,
      InvalidQuantityError,
+     OrderAlreadyReservedError,
 } from '@nabis/shared/src/utils/errors';
 
 describe('InventoryService - Reserve Inventory (Unit)', () => {
@@ -28,6 +29,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
           });
 
           it('should reject order with negative quantity', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                await expect(
                     inventoryService.reserveInventoryForOrder(mockClient, {
                          orderId: 'ORDER-001',
@@ -37,6 +43,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
           });
 
           it('should reject order with zero quantity', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                await expect(
                     inventoryService.reserveInventoryForOrder(mockClient, {
                          orderId: 'ORDER-001',
@@ -48,6 +59,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
 
      describe('Batch validation', () => {
           it('should throw when batch does not exist', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                mockClient.query.mockResolvedValueOnce({
                     rows: [], // No batches found
                } as never);
@@ -61,6 +77,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
           });
 
           it('should throw when insufficient inventory', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                mockClient.query.mockResolvedValueOnce({
                     rows: [{ id: 1, available_quantity: 5 }],
                } as never);
@@ -76,6 +97,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
 
      describe('Successful reservation', () => {
           it('should reserve inventory and create all records', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                // Mock batch query
                mockClient.query.mockResolvedValueOnce({
                     rows: [{ id: 1, available_quantity: 100 }],
@@ -98,7 +124,7 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
                     lines: [{ skuBatchId: 1, quantity: 10 }],
                });
 
-               expect(mockClient.query).toHaveBeenCalledTimes(5);
+               expect(mockClient.query).toHaveBeenCalledTimes(6);
 
                // Verify UPDATE sku_batch call
                expect(mockClient.query).toHaveBeenCalledWith(
@@ -120,6 +146,11 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
           });
 
           it('should handle multiple lines in one order', async () => {
+               // Mock no existing reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                // Mock batch query - two batches
                mockClient.query.mockResolvedValueOnce({
                     rows: [
@@ -148,12 +179,17 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
                     ],
                });
 
-               expect(mockClient.query).toHaveBeenCalledTimes(9); // 1 SELECT + 4*2 per line
+               expect(mockClient.query).toHaveBeenCalledTimes(10); // 1 existing check + 1 SELECT + 4*2 per line
           });
      });
 
      describe('Pessimistic locking', () => {
           it('should use FOR UPDATE when querying batches', async () => {
+               // Mock existing reservations check
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
                mockClient.query.mockResolvedValueOnce({
                     rows: [{ id: 1, available_quantity: 100 }],
                } as never);
@@ -164,12 +200,113 @@ describe('InventoryService - Reserve Inventory (Unit)', () => {
                     lines: [{ skuBatchId: 1, quantity: 10 }],
                });
 
-               // First query should include FOR UPDATE
+               // Second query (batch query) should include FOR UPDATE
                expect(mockClient.query).toHaveBeenNthCalledWith(
-                    1,
+                    2,
                     expect.stringContaining('FOR UPDATE'),
                     expect.anything()
                );
+          });
+     });
+
+     describe('Idempotency', () => {
+          it('should return success when reservation with identical lines already exists', async () => {
+               // Mock existing reservations - same order already reserved
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ sku_batch_id: 1, quantity: 10, status: 'PENDING' }],
+               } as never);
+
+               await inventoryService.reserveInventoryForOrder(mockClient, {
+                    orderId: 'ORDER-001',
+                    lines: [{ skuBatchId: 1, quantity: 10 }],
+               });
+
+               // Should only check for existing reservations, then return
+               expect(mockClient.query).toHaveBeenCalledTimes(1);
+               expect(mockClient.query).toHaveBeenCalledWith(
+                    expect.stringContaining('SELECT sku_batch_id, quantity, status'),
+                    ['ORDER-001']
+               );
+          });
+
+          it('should handle idempotent retry with multiple lines', async () => {
+               // Mock existing reservations with multiple lines
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [
+                         { sku_batch_id: 1, quantity: 10, status: 'PENDING' },
+                         { sku_batch_id: 2, quantity: 5, status: 'CONFIRMED' },
+                    ],
+               } as never);
+
+               await inventoryService.reserveInventoryForOrder(mockClient, {
+                    orderId: 'ORDER-001',
+                    lines: [
+                         { skuBatchId: 1, quantity: 10 },
+                         { skuBatchId: 2, quantity: 5 },
+                    ],
+               });
+
+               // Should only check for existing reservations, then return
+               expect(mockClient.query).toHaveBeenCalledTimes(1);
+          });
+
+          it('should throw when reservation with different lines already exists', async () => {
+               // Mock existing reservations - different quantity
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ sku_batch_id: 1, quantity: 20, status: 'PENDING' }],
+               } as never);
+
+               await expect(
+                    inventoryService.reserveInventoryForOrder(mockClient, {
+                         orderId: 'ORDER-001',
+                         lines: [{ skuBatchId: 1, quantity: 10 }],
+                    })
+               ).rejects.toThrow(OrderAlreadyReservedError);
+          });
+
+          it('should throw when reservation with different batches already exists', async () => {
+               // Mock existing reservations - different batch
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ sku_batch_id: 2, quantity: 10, status: 'PENDING' }],
+               } as never);
+
+               await expect(
+                    inventoryService.reserveInventoryForOrder(mockClient, {
+                         orderId: 'ORDER-001',
+                         lines: [{ skuBatchId: 1, quantity: 10 }],
+                    })
+               ).rejects.toThrow(OrderAlreadyReservedError);
+          });
+
+          it('should throw when reservation with more lines already exists', async () => {
+               // Mock existing reservations - extra line
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [
+                         { sku_batch_id: 1, quantity: 10, status: 'PENDING' },
+                         { sku_batch_id: 2, quantity: 5, status: 'PENDING' },
+                    ],
+               } as never);
+
+               await expect(
+                    inventoryService.reserveInventoryForOrder(mockClient, {
+                         orderId: 'ORDER-001',
+                         lines: [{ skuBatchId: 1, quantity: 10 }],
+                    })
+               ).rejects.toThrow(OrderAlreadyReservedError);
+          });
+
+          it('should treat CANCELLED reservations as conflict', async () => {
+               // Mock existing reservations - cancelled status
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ sku_batch_id: 1, quantity: 10, status: 'CANCELLED' }],
+               } as never);
+
+               await expect(
+                    inventoryService.reserveInventoryForOrder(mockClient, {
+                         orderId: 'ORDER-001',
+                         lines: [{ skuBatchId: 1, quantity: 10 }],
+                    })
+               ).rejects.toThrow(OrderAlreadyReservedError);
           });
      });
 });

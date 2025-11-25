@@ -9,6 +9,7 @@ import {
      BatchNotFoundError,
      InvalidQuantityError,
      OrderNotFoundError,
+     OrderAlreadyReservedError,
 } from '../utils/errors';
 import { logger } from '../utils/logger';
 
@@ -27,6 +28,56 @@ export class InventoryService {
           // Validate input
           if (!lines || lines.length === 0) {
                throw new InvalidQuantityError('Order must have at least one line');
+          }
+
+          // Check for existing reservations (idempotency)
+          const { rows: existingReservations } = await client.query<{
+               sku_batch_id: number;
+               quantity: number;
+               status: string;
+          }>(
+               `
+      SELECT sku_batch_id, quantity, status
+      FROM order_reservation
+      WHERE order_id = $1
+    `,
+               [orderId]
+          );
+
+          if (existingReservations.length > 0) {
+               // Normalize existing reservations for comparison
+               const existingMap = new Map(
+                    existingReservations.map((r) => [
+                         parseInt(String(r.sku_batch_id), 10),
+                         { quantity: parseInt(String(r.quantity), 10), status: r.status },
+                    ])
+               );
+
+               // Check if the reservation is identical (idempotent retry)
+               const isIdentical =
+                    existingReservations.length === lines.length &&
+                    lines.every((line) => {
+                         const existing = existingMap.get(line.skuBatchId);
+                         return (
+                              existing &&
+                              existing.quantity === line.quantity &&
+                              (existing.status === 'PENDING' || existing.status === 'CONFIRMED')
+                         );
+                    });
+
+               if (isIdentical) {
+                    logger.info(
+                         { orderId },
+                         'Order already reserved with identical lines - treating as idempotent retry'
+                    );
+                    return; // Idempotent - no-op
+               }
+
+               // Different lines - this is a conflict
+               throw new OrderAlreadyReservedError(
+                    orderId,
+                    `Order ${orderId} is already reserved with different lines`
+               );
           }
 
           for (const line of lines) {
@@ -173,6 +224,25 @@ export class InventoryService {
           );
 
           if (reservations.length === 0) {
+               // Check if order exists but is already released/cancelled
+               const { rows: anyReservations } = await client.query<{ status: string }>(
+                    `
+        SELECT status
+        FROM order_reservation
+        WHERE order_id = $1
+        LIMIT 1
+      `,
+                    [orderId]
+               );
+
+               if (anyReservations.length > 0 && anyReservations[0].status === 'CANCELLED') {
+                    logger.info(
+                         { orderId },
+                         'Order already released - treating as idempotent retry'
+                    );
+                    return; // Idempotent - already released
+               }
+
                throw new OrderNotFoundError(orderId);
           }
 

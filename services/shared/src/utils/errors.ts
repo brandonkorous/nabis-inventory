@@ -41,6 +41,15 @@ export class OrderNotFoundError extends DomainError {
      }
 }
 
+export class OrderAlreadyReservedError extends DomainError {
+     constructor(
+          public readonly orderId: string,
+          message: string = 'Order is already reserved with different lines'
+     ) {
+          super(message, 'ORDER_ALREADY_RESERVED', 409);
+     }
+}
+
 export class WmsApiError extends Error {
      constructor(
           public readonly statusCode: number,

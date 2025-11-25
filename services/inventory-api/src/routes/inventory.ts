@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { withTransaction } from '@nabis/shared/src/db/client';
+import { withTransaction, pool } from '@nabis/shared/src/db/client';
 import { InventoryService } from '@nabis/shared/src/services/inventory-service';
 import { DomainError } from '@nabis/shared/src/utils/errors';
 import { logger } from '@nabis/shared/src/utils/logger';
@@ -9,7 +9,6 @@ import {
      releaseInventorySchema,
      getInventorySchema,
 } from '../schemas/inventory.schemas';
-
 const inventoryService = new InventoryService();
 
 export async function registerInventoryRoutes(app: FastifyInstance) {
@@ -115,7 +114,9 @@ export async function registerInventoryRoutes(app: FastifyInstance) {
                const params = request.params as { sku: string };
 
                try {
-                    await withTransaction(async (client) => {
+                    // Use pool directly for read-only query - no need for transaction wrapper
+                    const client = await pool.connect();
+                    try {
                          const batches = await inventoryService.getAvailableInventory(
                               client,
                               params.sku
@@ -138,7 +139,9 @@ export async function registerInventoryRoutes(app: FastifyInstance) {
                                    expiresAt: b.expiresAt?.toISOString(),
                               })),
                          });
-                    });
+                    } finally {
+                         client.release();
+                    }
                } catch (error) {
                     logger.error({ error }, 'Failed to get inventory');
                     reply.code(500).send({

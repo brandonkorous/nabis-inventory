@@ -46,7 +46,7 @@ class WmsSyncWorker {
      }
 
      private async handleForceSync(payload: {
-          syncRequestId: string;
+          syncRequestId: number;
           skuBatchId?: number;
      }): Promise<void> {
           const { syncRequestId, skuBatchId } = payload;

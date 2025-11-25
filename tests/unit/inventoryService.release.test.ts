@@ -15,8 +15,14 @@ describe('InventoryService - Release Inventory (Unit)', () => {
 
      describe('Order not found', () => {
           it('should throw when no reservations exist', async () => {
+               // Mock no pending reservations
                mockClient.query.mockResolvedValueOnce({
-                    rows: [], // No reservations
+                    rows: [],
+               } as never);
+
+               // Mock check for any reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
                } as never);
 
                await expect(
@@ -24,6 +30,47 @@ describe('InventoryService - Release Inventory (Unit)', () => {
                          orderId: 'ORDER-999',
                     })
                ).rejects.toThrow(OrderNotFoundError);
+          });
+     });
+
+     describe('Idempotency', () => {
+          it('should return success when order already released', async () => {
+               // Mock no pending reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
+               // Mock check for any reservations - already cancelled
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ status: 'CANCELLED' }],
+               } as never);
+
+               await inventoryService.releaseInventoryForOrder(mockClient, {
+                    orderId: 'ORDER-001',
+               });
+
+               // Should only check for reservations, then return
+               expect(mockClient.query).toHaveBeenCalledTimes(2);
+          });
+
+          it('should not throw on multiple release calls', async () => {
+               // Mock no pending reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [],
+               } as never);
+
+               // Mock check for cancelled reservations
+               mockClient.query.mockResolvedValueOnce({
+                    rows: [{ status: 'CANCELLED' }],
+               } as never);
+
+               // Should not throw
+               await expect(
+                    inventoryService.releaseInventoryForOrder(mockClient, {
+                         orderId: 'ORDER-001',
+                         reason: 'RETRY',
+                    })
+               ).resolves.not.toThrow();
           });
      });
 
