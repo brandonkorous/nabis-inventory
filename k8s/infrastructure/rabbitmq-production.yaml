@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: rabbitmq-pvc
-  namespace: nabis-production
+  namespace: nabis-inventory
 spec:
   accessModes:
     - ReadWriteOnce
@@ -14,7 +14,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rabbitmq
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: rabbitmq
     service: nabis-inventory
@@ -75,7 +75,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: rabbitmq
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: rabbitmq
     service: nabis-inventory

@@ -82,6 +82,18 @@ jobs:
                     --docker-password=${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
+            - name: Deploy infrastructure (Postgres & RabbitMQ)
+              run: |
+                  echo "Deploying infrastructure..."
+                  kubectl apply -f k8s/infrastructure/postgres-production.yaml
+                  kubectl apply -f k8s/infrastructure/rabbitmq-production.yaml
+
+                  echo "Waiting for infrastructure to be ready..."
+                  kubectl wait --for=condition=ready pod -l app=postgres -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
+                  kubectl wait --for=condition=ready pod -l app=rabbitmq -n ${{ steps.namespace.outputs.namespace }} --timeout=5m
+
+                  echo "Infrastructure deployed successfully"
+
             - name: Run database migrations
               if: inputs.run_migrations
               run: |
@@ -143,7 +155,14 @@ jobs:
               run: |
                   echo "Deploying services to ${{ inputs.environment }}..."
 
-                  # Update all deployments with new image tag
+                  # Apply all service deployments
+                  kubectl apply -f k8s/services/inventory-api/inventory-api-production.yaml
+                  kubectl apply -f k8s/services/admin-api/admin-api-production.yaml
+                  kubectl apply -f k8s/services/event-dispatcher/event-dispatcher-production.yaml
+                  kubectl apply -f k8s/services/wms-outbound-worker/wms-outbound-worker-production.yaml
+                  kubectl apply -f k8s/services/wms-sync-worker/wms-sync-worker-production.yaml
+
+                  # Update deployments with the specific image tag
                   kubectl set image deployment/inventory-api \
                     inventory-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }} \
                     -n ${{ steps.namespace.outputs.namespace }}
