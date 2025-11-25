@@ -166,7 +166,7 @@ jobs:
                         containers:
                           - name: migration
                             image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ steps.image-tag.outputs.tag }}
-                            command: ["npm", "run", "migrate"]
+                            command: ["npm", "run", "migrate", "--workspace=@nabis/shared"]
                             envFrom:
                               - configMapRef:
                                   name: nabis-config
