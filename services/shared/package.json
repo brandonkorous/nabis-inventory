@@ -1,0 +1,28 @@
+{
+    "name": "@nabis/shared",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": "./dist/index.js",
+        "./dist/*": "./dist/*.js",
+        "./src/*": "./dist/*.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "migrate": "node dist/db/migrate.js",
+        "seed": "node dist/db/seed.js"
+    },
+    "dependencies": {
+        "pg": "^8.11.3",
+        "amqplib": "^0.10.3",
+        "pino": "^8.17.2",
+        "dotenv": "^16.3.1"
+    },
+    "devDependencies": {
+        "@types/pg": "^8.10.9",
+        "@types/amqplib": "^0.10.4"
+    }
+}

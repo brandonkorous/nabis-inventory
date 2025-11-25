@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wms-outbound-worker
+  namespace: nabis-production
+  labels:
+    app: wms-outbound-worker
+    service: nabis-inventory
+    environment: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wms-outbound-worker
+  template:
+    metadata:
+      labels:
+        app: wms-outbound-worker
+        service: nabis-inventory
+        environment: production
+    spec:
+      containers:
+        - name: wms-outbound-worker
+          image: brandonkorouscontainers.azurecr.io/nabis-wms-outbound-worker:latest
+          envFrom:
+            - configMapRef:
+                name: nabis-config
+            - secretRef:
+                name: nabis-secrets
+          resources:
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ps aux | grep node || exit 1
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

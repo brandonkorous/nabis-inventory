@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wms-sync-worker
+  namespace: nabis-staging
+  labels:
+    app: wms-sync-worker
+    service: nabis-inventory
+    environment: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wms-sync-worker
+  template:
+    metadata:
+      labels:
+        app: wms-sync-worker
+        service: nabis-inventory
+        environment: staging
+    spec:
+      containers:
+        - name: wms-sync-worker
+          image: brandonkorouscontainers.azurecr.io/nabis-wms-sync-worker:latest
+          envFrom:
+            - configMapRef:
+                name: nabis-config
+            - secretRef:
+                name: nabis-secrets
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '250m'
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ps aux | grep node || exit 1
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

@@ -1,0 +1,20 @@
+{
+     "name": "@nabis/wms-outbound-worker",
+     "version": "1.0.0",
+     "private": true,
+     "main": "dist/index.js",
+     "scripts": {
+          "build": "tsc",
+          "dev": "nodemon",
+          "start": "node dist/index.js"
+     },
+     "dependencies": {
+          "@nabis/shared": "1.0.0",
+          "dotenv": "^16.3.1"
+     },
+     "devDependencies": {
+          "@types/node": "^20.10.6",
+          "nodemon": "^3.0.2",
+          "typescript": "^5.3.3"
+     }
+}

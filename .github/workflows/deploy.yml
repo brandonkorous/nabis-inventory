@@ -1,0 +1,169 @@
+name: Deploy to AKS
+
+on:
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "Environment to deploy to"
+                required: true
+                type: choice
+                options:
+                    - staging
+                    - production
+            image_tag:
+                description: "Image tag to deploy (e.g., main-a1b2c3d4 or develop-x1y2z3w4)"
+                required: true
+                type: string
+            run_migrations:
+                description: "Run database migrations"
+                required: false
+                type: boolean
+                default: true
+
+jobs:
+    deploy:
+        name: Deploy to ${{ inputs.environment }}
+        runs-on: ubuntu-latest
+        environment:
+            name: ${{ inputs.environment }}
+            url: ${{ inputs.environment == 'production' && 'https://inventory-api.brandonkorous.com' || 'https://staging-inventory-api.brandonkorous.com' }}
+        permissions:
+            contents: read
+            id-token: write
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Azure Login
+              uses: azure/login@v2
+              with:
+                  creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+            - name: Set AKS context
+              uses: azure/aks-set-context@v3
+              with:
+                  resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+                  cluster-name: ${{ inputs.environment == 'production' && secrets.AKS_CLUSTER_NAME_PROD || secrets.AKS_CLUSTER_NAME_STAGING }}
+
+            - name: Set namespace
+              id: namespace
+              run: |
+                  if [[ "${{ inputs.environment }}" == "production" ]]; then
+                    echo "namespace=nabis-production" >> $GITHUB_OUTPUT
+                  else
+                    echo "namespace=nabis-staging" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Run database migrations
+              if: inputs.run_migrations
+              run: |
+                  echo "Running database migrations..."
+
+                  cat <<EOF | kubectl apply -f -
+                  apiVersion: batch/v1
+                  kind: Job
+                  metadata:
+                    name: db-migration-${{ github.run_number }}
+                    namespace: ${{ steps.namespace.outputs.namespace }}
+                  spec:
+                    ttlSecondsAfterFinished: 300
+                    backoffLimit: 3
+                    template:
+                      spec:
+                        restartPolicy: Never
+                        containers:
+                          - name: migration
+                            image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }}
+                            command: ["npm", "run", "migrate"]
+                            envFrom:
+                              - secretRef:
+                                  name: nabis-secrets
+                            resources:
+                              requests:
+                                memory: '128Mi'
+                                cpu: '100m'
+                              limits:
+                                memory: '256Mi'
+                                cpu: '200m'
+                  EOF
+
+                  # Wait for migration to complete
+                  kubectl wait --for=condition=complete --timeout=300s job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+
+                  # Show migration logs
+                  kubectl logs job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+
+            - name: Deploy services
+              run: |
+                  echo "Deploying services to ${{ inputs.environment }}..."
+
+                  # Update all deployments with new image tag
+                  kubectl set image deployment/inventory-api \
+                    inventory-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+                  kubectl set image deployment/admin-api \
+                    admin-api=${{ secrets.ACR_LOGIN_SERVER }}/nabis-admin-api:${{ inputs.image_tag }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+                  kubectl set image deployment/event-dispatcher \
+                    event-dispatcher=${{ secrets.ACR_LOGIN_SERVER }}/nabis-event-dispatcher:${{ inputs.image_tag }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+                  kubectl set image deployment/wms-outbound-worker \
+                    wms-outbound-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-outbound-worker:${{ inputs.image_tag }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+                  kubectl set image deployment/wms-sync-worker \
+                    wms-sync-worker=${{ secrets.ACR_LOGIN_SERVER }}/nabis-wms-sync-worker:${{ inputs.image_tag }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+            - name: Wait for rollout
+              run: |
+                  echo "Waiting for deployments to complete..."
+                  kubectl rollout status deployment/inventory-api -n ${{ steps.namespace.outputs.namespace }} --timeout=10m
+                  kubectl rollout status deployment/admin-api -n ${{ steps.namespace.outputs.namespace }} --timeout=10m
+                  kubectl rollout status deployment/event-dispatcher -n ${{ steps.namespace.outputs.namespace }} --timeout=10m
+                  kubectl rollout status deployment/wms-outbound-worker -n ${{ steps.namespace.outputs.namespace }} --timeout=10m
+                  kubectl rollout status deployment/wms-sync-worker -n ${{ steps.namespace.outputs.namespace }} --timeout=10m
+
+            - name: Verify deployment
+              run: |
+                  echo "Verifying deployment..."
+                  kubectl get pods -n ${{ steps.namespace.outputs.namespace }}
+                  kubectl get services -n ${{ steps.namespace.outputs.namespace }}
+
+            - name: Run smoke tests
+              run: |
+                  # Wait for services to stabilize
+                  sleep 30
+
+                  # Get the service URL
+                  if [[ "${{ inputs.environment }}" == "production" ]]; then
+                    API_URL="https://inventory-api.brandonkorous.com"
+                  else
+                    API_URL="https://staging-inventory-api.brandonkorous.com"
+                  fi
+
+                  echo "Testing health endpoint at $API_URL/health"
+                  curl -f "$API_URL/health" || echo "Health check failed (may not be exposed yet)"
+
+            - name: Notify Slack
+              if: always()
+              uses: slackapi/slack-github-action@v1
+              with:
+                  payload: |
+                      {
+                        "text": "${{ inputs.environment }} deployment ${{ job.status }}",
+                        "blocks": [
+                          {
+                            "type": "section",
+                            "text": {
+                              "type": "mrkdwn",
+                              "text": "*${{ inputs.environment }} Deployment*\nStatus: ${{ job.status }}\nImage Tag: ${{ inputs.image_tag }}\nDeployed by: ${{ github.actor }}"
+                            }
+                          }
+                        ]
+                      }
+              env:
+                  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

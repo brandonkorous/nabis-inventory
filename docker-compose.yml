@@ -1,0 +1,163 @@
+version: "3.8"
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: nabis-postgres
+    environment:
+      POSTGRES_DB: nabis_inventory
+      POSTGRES_USER: nabis
+      POSTGRES_PASSWORD: nabis_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/shared/src/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nabis"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nabis-network
+
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: nabis-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: nabis
+      RABBITMQ_DEFAULT_PASS: nabis_dev_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nabis-network
+
+  # Inventory API (order-path)
+  inventory-api:
+    build:
+      context: .
+      dockerfile: services/inventory-api/Dockerfile
+    container_name: nabis-inventory-api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://nabis:nabis_dev_password@postgres:5432/nabis_inventory
+      AMQP_URL: amqp://nabis:nabis_dev_password@rabbitmq:5672
+      NODE_ENV: production
+      LOG_LEVEL: info
+      INVENTORY_API_PORT: 3000
+      INVENTORY_API_HOST: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nabis-network
+    restart: unless-stopped
+
+  # Admin API (control-plane)
+  admin-api:
+    build:
+      context: .
+      dockerfile: services/admin-api/Dockerfile
+    container_name: nabis-admin-api
+    ports:
+      - "3100:3100"
+    environment:
+      DATABASE_URL: postgresql://nabis:nabis_dev_password@postgres:5432/nabis_inventory
+      AMQP_URL: amqp://nabis:nabis_dev_password@rabbitmq:5672
+      NODE_ENV: production
+      LOG_LEVEL: info
+      ADMIN_API_PORT: 3100
+      ADMIN_API_HOST: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nabis-network
+    restart: unless-stopped
+
+  # Event Dispatcher (outbox pattern)
+  event-dispatcher:
+    build:
+      context: .
+      dockerfile: services/event-dispatcher/Dockerfile
+    container_name: nabis-event-dispatcher
+    environment:
+      DATABASE_URL: postgresql://nabis:nabis_dev_password@postgres:5432/nabis_inventory
+      AMQP_URL: amqp://nabis:nabis_dev_password@rabbitmq:5672
+      NODE_ENV: production
+      LOG_LEVEL: info
+      EVENT_BATCH_SIZE: 100
+      EVENT_POLL_INTERVAL_MS: 200
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nabis-network
+    restart: unless-stopped
+
+  # WMS Outbound Worker
+  wms-outbound-worker:
+    build:
+      context: .
+      dockerfile: services/wms-outbound-worker/Dockerfile
+    container_name: nabis-wms-outbound-worker
+    environment:
+      DATABASE_URL: postgresql://nabis:nabis_dev_password@postgres:5432/nabis_inventory
+      AMQP_URL: amqp://nabis:nabis_dev_password@rabbitmq:5672
+      NODE_ENV: production
+      LOG_LEVEL: info
+      WMS_CLIENT_TYPE: mock
+      AMQP_PREFETCH: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nabis-network
+    restart: unless-stopped
+
+  # WMS Sync Worker
+  wms-sync-worker:
+    build:
+      context: .
+      dockerfile: services/wms-sync-worker/Dockerfile
+    container_name: nabis-wms-sync-worker
+    environment:
+      DATABASE_URL: postgresql://nabis:nabis_dev_password@postgres:5432/nabis_inventory
+      AMQP_URL: amqp://nabis:nabis_dev_password@rabbitmq:5672
+      NODE_ENV: production
+      LOG_LEVEL: info
+      WMS_CLIENT_TYPE: mock
+      AMQP_PREFETCH: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - nabis-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  nabis-network:
+    driver: bridge

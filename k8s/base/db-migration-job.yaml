@@ -1,0 +1,105 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: nabis-production
+  labels:
+    app: db-migration
+    service: nabis-inventory
+spec:
+  ttlSecondsAfterFinished: 300  # Auto-cleanup after 5 minutes
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: db-migration
+        service: nabis-inventory
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: brandonkorouscontainers.azurecr.io/nabis-inventory-api:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Running database migrations..."
+              cd /app/services/shared
+              npm run migrate
+              
+              # Run seeding if SEED_DATABASE env var is set to 'true'
+              if [ "$SEED_DATABASE" = "true" ]; then
+                echo "Seeding database with test data..."
+                npm run seed
+              else
+                echo "Skipping database seeding (set SEED_DATABASE=true to enable)"
+              fi
+              
+              echo "Database setup complete"
+          env:
+            - name: SEED_DATABASE
+              value: "false"  # Set to "true" to seed test data in production
+          envFrom:
+            - secretRef:
+                name: nabis-secrets
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '200m'
+---
+# For staging environment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: nabis-staging
+  labels:
+    app: db-migration
+    service: nabis-inventory
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: db-migration
+        service: nabis-inventory
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: brandonkorouscontainers.azurecr.io/nabis-inventory-api:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Running database migrations..."
+              cd /app/services/shared
+              npm run migrate
+              
+              # Run seeding if SEED_DATABASE env var is set to 'true'
+              if [ "$SEED_DATABASE" = "true" ]; then
+                echo "Seeding database with test data..."
+                npm run seed
+              else
+                echo "Skipping database seeding (set SEED_DATABASE=true to enable)"
+              fi
+              
+              echo "Database setup complete"
+          env:
+            - name: SEED_DATABASE
+              value: "true"  # Staging defaults to seeding test data
+          envFrom:
+            - secretRef:
+                name: nabis-secrets
+          resources:
+            requests:
+              memory: '128Mi'
+              cpu: '100m'
+            limits:
+              memory: '256Mi'
+              cpu: '200m'
+

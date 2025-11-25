@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Kubernetes Secrets (NEVER commit actual secrets!)
+k8s/base/secrets-production.yaml
+k8s/base/secrets-staging.yaml
+k8s/**/secrets*.yaml
+*.secret.yaml
+
+# Azure credentials
+azure-credentials.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docker
+*.pid
+
+# Misc
+.cache/
+tmp/
