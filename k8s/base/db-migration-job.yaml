@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: db-migration
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: db-migration
     service: nabis-inventory
@@ -16,6 +16,8 @@ spec:
         service: nabis-inventory
     spec:
       restartPolicy: Never
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: migration
           image: brandonkorouscontainers.azurecr.io/nabis-inventory-api:latest
@@ -45,7 +47,7 @@ spec:
           resources:
             requests:
               memory: '128Mi'
-              cpu: '100m'
+              cpu: '50m'
             limits:
               memory: '256Mi'
               cpu: '200m'
@@ -69,6 +71,8 @@ spec:
         service: nabis-inventory
     spec:
       restartPolicy: Never
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: migration
           image: brandonkorouscontainers.azurecr.io/nabis-inventory-api:latest
@@ -98,7 +102,7 @@ spec:
           resources:
             requests:
               memory: '128Mi'
-              cpu: '100m'
+              cpu: '50m'
             limits:
               memory: '256Mi'
               cpu: '200m'
