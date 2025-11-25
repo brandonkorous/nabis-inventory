@@ -56,14 +56,19 @@ jobs:
               run: |
                   kubelogin convert-kubeconfig -l azurecli
 
+            - name: Verify cluster access
+              run: |
+                  kubectl cluster-info
+                  kubectl auth can-i create deployments --all-namespaces || echo "Limited permissions detected"
+
             - name: Set namespace
               id: namespace
               run: |
-                  if [[ "${{ inputs.environment }}" == "production" ]]; then
-                    echo "namespace=nabis-production" >> $GITHUB_OUTPUT
-                  else
-                    echo "namespace=nabis-staging" >> $GITHUB_OUTPUT
-                  fi
+                  echo "namespace=nabis-inventory" >> $GITHUB_OUTPUT
+
+            - name: Create namespace if not exists
+              run: |
+                  kubectl create namespace ${{ steps.namespace.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f - || true
 
             - name: Run database migrations
               if: inputs.run_migrations
