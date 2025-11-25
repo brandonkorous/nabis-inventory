@@ -96,6 +96,15 @@ jobs:
                     --docker-password=${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }} \
                     -n ${{ steps.namespace.outputs.namespace }}
 
+            - name: Deploy ConfigMap
+              run: |
+                  echo "Deploying ConfigMap for ${{ inputs.environment }}..."
+                  if [[ "${{ inputs.environment }}" == "production" ]]; then
+                    kubectl apply -f k8s/base/configmap-production.yaml
+                  else
+                    kubectl apply -f k8s/base/configmap-staging.yaml
+                  fi
+
             - name: Deploy infrastructure (Postgres & RabbitMQ)
               run: |
                   echo "Deploying infrastructure..."
@@ -119,6 +128,21 @@ jobs:
                   fi
 
                   echo "Infrastructure deployed successfully"
+
+            - name: Create application secrets
+              run: |
+                  echo "Creating application secrets..."
+
+                  # Delete existing secret if it exists
+                  kubectl delete secret nabis-secrets -n ${{ steps.namespace.outputs.namespace }} --ignore-not-found=true
+
+                  # Create secret with connection strings
+                  kubectl create secret generic nabis-secrets \
+                    --from-literal=DATABASE_URL="postgresql://nabis:nabis_password@postgres.nabis-inventory.svc.cluster.local:5432/nabis_inventory" \
+                    --from-literal=AMQP_URL="amqp://nabis:nabis_password@rabbitmq.nabis-inventory.svc.cluster.local:5672" \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
+                  echo "Secrets created successfully"
 
             - name: Run database migrations
               if: inputs.run_migrations
@@ -144,6 +168,8 @@ jobs:
                             image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ steps.image-tag.outputs.tag }}
                             command: ["npm", "run", "migrate"]
                             envFrom:
+                              - configMapRef:
+                                  name: nabis-config
                               - secretRef:
                                   name: nabis-secrets
                             resources:

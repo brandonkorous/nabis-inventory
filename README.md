@@ -91,7 +91,7 @@ cd services/wms-sync-worker && npm run dev
 ### Inventory API (Order Path)
 
 - **Swagger UI**: http://localhost:3000/docs
-- **Production**: https://inventory-api.brandonkorous.com/docs
+- **Production**: https://nabis.brandonkorous.com/inventory/docs
 - **OpenAPI JSON**: http://localhost:3000/docs/json
 
 **Endpoints:**
@@ -105,7 +105,7 @@ cd services/wms-sync-worker && npm run dev
 ### Admin API (Control Plane)
 
 - **Swagger UI**: http://localhost:3100/docs
-- **Production**: https://admin-api.brandonkorous.com/docs
+- **Production**: https://nabis.brandonkorous.com/admin/docs
 - **OpenAPI JSON**: http://localhost:3100/docs/json
 
 **Endpoints:**
@@ -312,11 +312,11 @@ These must be configured in Kubernetes ConfigMaps and Secrets. See [docs/deploym
 #### Required Variables (All Services)
 
 - `DATABASE_URL` (Secret) - PostgreSQL connection string
-     - Production: `postgresql://nabis:nabis_password@postgres.nabis-production.svc.cluster.local:5432/nabis_inventory`
-     - Staging: `postgresql://nabis:nabis_password@postgres.nabis-staging.svc.cluster.local:5432/nabis_inventory`
+     - Production: `postgresql://nabis:nabis_password@postgres.nabis-inventory.svc.cluster.local:5432/nabis_inventory`
+     - Staging: `postgresql://nabis:nabis_password@postgres.nabis-inventory.svc.cluster.local:5432/nabis_inventory`
 - `AMQP_URL` (Secret) - RabbitMQ connection string
-     - Production: `amqp://nabis:nabis_password@rabbitmq.nabis-production.svc.cluster.local:5672`
-     - Staging: `amqp://nabis:nabis_password@rabbitmq.nabis-staging.svc.cluster.local:5672`
+     - Production: `amqp://nabis:nabis_password@rabbitmq.nabis-inventory.svc.cluster.local:5672`
+     - Staging: `amqp://nabis:nabis_password@rabbitmq.nabis-inventory.svc.cluster.local:5672`
 - `NODE_ENV` (ConfigMap) - Runtime environment: `production`, `staging`, `development`
 - `LOG_LEVEL` (ConfigMap) - Logging level: `info`, `debug`, `warn`, `error`
 
@@ -414,12 +414,12 @@ kubectl apply -f k8s/infrastructure/postgres-production.yaml
 kubectl apply -f k8s/infrastructure/rabbitmq-production.yaml
 
 # Wait for infrastructure to be ready
-kubectl wait --for=condition=ready pod -l app=postgres -n nabis-production --timeout=120s
-kubectl wait --for=condition=ready pod -l app=rabbitmq -n nabis-production --timeout=120s
+kubectl wait --for=condition=ready pod -l app=postgres -n nabis-inventory --timeout=120s
+kubectl wait --for=condition=ready pod -l app=rabbitmq -n nabis-inventory --timeout=120s
 
 # 6. Run database migrations
 kubectl apply -f k8s/base/db-migration-job.yaml
-kubectl wait --for=condition=complete job/db-migration -n nabis-production --timeout=120s
+kubectl wait --for=condition=complete job/db-migration -n nabis-inventory --timeout=120s
 
 # 7. Deploy application services
 kubectl apply -f k8s/services/inventory-api/inventory-api-production.yaml
@@ -429,8 +429,8 @@ kubectl apply -f k8s/services/wms-outbound-worker/wms-outbound-worker-production
 kubectl apply -f k8s/services/wms-sync-worker/wms-sync-worker-production.yaml
 
 # 8. Verify deployment
-kubectl get pods -n nabis-production
-kubectl get svc -n nabis-production
+kubectl get pods -n nabis-inventory
+kubectl get svc -n nabis-inventory
 ```
 
 ### Documentation

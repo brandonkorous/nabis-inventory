@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nabis-config
-  namespace: nabis-production
+  namespace: nabis-inventory
 data:
   # Environment
   NODE_ENV: 'production'
