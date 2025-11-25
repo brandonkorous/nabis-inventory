@@ -1,4 +1,4 @@
-# Nabis Inventory Service – Detailed Flow Diagrams
+# Nabis Inventory Service - Detailed Flow Diagrams
 
 Node.js + PostgreSQL + RabbitMQ
 
@@ -28,7 +28,7 @@ This is the hot path: validating and reserving inventory for an order **without 
 
 ```mermaid
 sequenceDiagram
-  title Order Reservation – Happy Path
+  title Order Reservation - Happy Path
 
   participant Client as Order Service
   participant InvAPI as inventory-api
@@ -104,7 +104,7 @@ This shows how Postgres row locks serialize competing updates.
 
 ```mermaid
 sequenceDiagram
-  title Concurrency – Two Competing Orders
+  title Concurrency - Two Competing Orders
 
   participant ClientA as Order Service A
   participant ClientB as Order Service B
@@ -158,7 +158,7 @@ This flow demonstrates the **outbox pattern**: events written in the same transa
 
 ```mermaid
 sequenceDiagram
-  title Domain Event Dispatch – Outbox to RabbitMQ
+  title Domain Event Dispatch - Outbox to RabbitMQ
 
   participant Dispatcher as event-dispatcher
 (Service)
@@ -167,7 +167,7 @@ sequenceDiagram
   participant QOutbound as Queue wms.outbound
   participant Analytics as Analytics/BI
 
-  loop Every 100–500ms
+  loop Every 100-500ms
     Dispatcher->>DB: BEGIN
     Dispatcher->>DB: SELECT * FROM domain_event
 WHERE status='PENDING'
@@ -205,7 +205,7 @@ This flow shows how we respect the WMS boundary and keep retry/backoff logic out
 
 ```mermaid
 sequenceDiagram
-  title WMS Outbound – Event-Driven Allocation
+  title WMS Outbound - Event-Driven Allocation
 
   participant QOutbound as Queue wms.outbound
   participant WmsOutbound as wms-outbound-worker
@@ -250,11 +250,11 @@ The important bit: **even if WMS is down or flaky, orders are still being safely
 
 ## 5. Periodic WMS Sync Flow (Time-Based Reconciliation)
 
-This flow represents a **scheduled sync** (e.g., every 5–15 minutes) independent of force-sync commands.
+This flow represents a **scheduled sync** (e.g., every 5-15 minutes) independent of force-sync commands.
 
 ```mermaid
 sequenceDiagram
-  title Periodic WMS Sync – Scheduled Reconciliation
+  title Periodic WMS Sync - Scheduled Reconciliation
 
   participant Scheduler as Cron / Timer
   participant WmsSync as wms-sync-worker
@@ -316,7 +316,7 @@ This is the “we just fixed it in WMS, push the button now” path.
 
 ```mermaid
 sequenceDiagram
-  title Forced WMS Sync – Admin / Control Plane
+  title Forced WMS Sync - Admin / Control Plane
 
   participant AdminClient as Admin Client
 (UI/CLI/service)
@@ -380,7 +380,7 @@ For completeness: how a caller asks “how much do we have right now?”
 
 ```mermaid
 sequenceDiagram
-  title Inventory Read – Query Available Quantity
+  title Inventory Read - Query Available Quantity
 
   participant Client as Caller Service
   participant InvAPI as inventory-api
@@ -415,9 +415,9 @@ These diagrams let you:
 
 - Start with the **high-level architecture** (v5 doc: microservices + infra).
 - Then zoom into:
-     - Order reservation & oversell prevention (Sections 1–2).
+     - Order reservation & oversell prevention (Sections 1-2).
      - Event-driven integration via outbox + RabbitMQ (Section 3).
-     - WMS-specific concerns (Sections 4–6).
+     - WMS-specific concerns (Sections 4-6).
      - Simple read path (Section 7).
 
 You can literally pick a diagram, point to each lifeline, and say “this is a separate service” and “here’s where we guarantee correctness versus where we deal with eventual consistency and external flakiness.”

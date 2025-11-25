@@ -46,7 +46,9 @@ jobs:
                   IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
                   echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-                  echo "Deploying image tag: ${IMAGE_TAG}"            - name: Azure Login
+                  echo "Deploying image tag: ${IMAGE_TAG}"
+
+            - name: Azure Login
               uses: azure/login@v2
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}

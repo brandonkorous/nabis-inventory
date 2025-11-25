@@ -1,4 +1,4 @@
-# Nabis Inventory Service Implementation Plan – Production-Grade (API-Only)
+# Nabis Inventory Service Implementation Plan - Production-Grade (API-Only)
 
 Node.js + PostgreSQL + RabbitMQ
 
@@ -54,7 +54,7 @@ Deployed processes/containers:
 - `wms-outbound-worker`: runs `wmsOutboundWorker.ts`.
 - `wms-sync-worker`: runs `wmsSyncWorker.ts`.
 
-No UI is built here—this is pure middleware.
+No UI is built here - this is pure middleware.
 
 ---
 
@@ -746,4 +746,4 @@ With this implementation plan, you can clearly say:
 - “Side-effects (WMS updates, analytics) are pushed via an **outbox pattern** into RabbitMQ, and dedicated workers handle WMS integration, respecting rate limits and failures.”
 - “Operations can trigger a **force sync** via an Admin API that enqueues commands for the WMS Sync Worker, without blocking on WMS from the HTTP call.”
 
-That tells them you’re thinking in terms of **clear service boundaries**, **API contracts**, and **separation of concerns**—exactly what you want for a production middleware service.
+That tells them you're thinking in terms of **clear service boundaries**, **API contracts**, and **separation of concerns** - exactly what you want for a production middleware service.

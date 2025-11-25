@@ -1,4 +1,4 @@
-# Nabis Inventory Service Architecture – Production-Grade (API-First, Explicit Messaging, Microservices)
+# Nabis Inventory Service Architecture - Production-Grade (API-First, Explicit Messaging, Microservices)
 
 Node.js + PostgreSQL + RabbitMQ
 
@@ -98,10 +98,10 @@ We treat inventory like a banking system treats balances:
 **Shared Infrastructure:**
 
 - **RabbitMQ**
-     - Exchange: `inventory.events` (topic) — domain events (InventoryAllocated, etc.).
-     - Exchange: `wms.commands` (topic) — control commands (ForceWmsSync, etc.).
-     - Queue: `wms.outbound` — bound to `inventory.events`.
-     - Queue: `wms.sync` — bound to `wms.commands`.
+     - Exchange: `inventory.events` (topic) - domain events (InventoryAllocated, etc.).
+     - Exchange: `wms.commands` (topic) - control commands (ForceWmsSync, etc.).
+     - Queue: `wms.outbound` - bound to `inventory.events`.
+     - Queue: `wms.sync` - bound to `wms.commands`.
 
 - **PostgreSQL**
      - Shared system of record DB used by the services above.
