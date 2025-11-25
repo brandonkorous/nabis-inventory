@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wms-sync-worker
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: wms-sync-worker
     service: nabis-inventory
@@ -19,6 +19,8 @@ spec:
         service: nabis-inventory
         environment: production
     spec:
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: wms-sync-worker
           image: brandonkorouscontainers.azurecr.io/nabis-wms-sync-worker:latest

@@ -70,6 +70,18 @@ jobs:
               run: |
                   kubectl create namespace ${{ steps.namespace.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f - || true
 
+            - name: Create ACR image pull secret
+              run: |
+                  # Delete existing secret if it exists
+                  kubectl delete secret acr-secret -n ${{ steps.namespace.outputs.namespace }} --ignore-not-found=true
+
+                  # Create new secret with ACR credentials
+                  kubectl create secret docker-registry acr-secret \
+                    --docker-server=${{ secrets.ACR_LOGIN_SERVER }} \
+                    --docker-username=${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }} \
+                    --docker-password=${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }} \
+                    -n ${{ steps.namespace.outputs.namespace }}
+
             - name: Run database migrations
               if: inputs.run_migrations
               run: |
@@ -87,6 +99,8 @@ jobs:
                     template:
                       spec:
                         restartPolicy: Never
+                        imagePullSecrets:
+                          - name: acr-secret
                         containers:
                           - name: migration
                             image: ${{ secrets.ACR_LOGIN_SERVER }}/nabis-inventory-api:${{ inputs.image_tag }}

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: inventory-api
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: inventory-api
     service: nabis-inventory
@@ -19,6 +19,8 @@ spec:
         service: nabis-inventory
         environment: production
     spec:
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: inventory-api
           image: brandonkorouscontainers.azurecr.io/nabis-inventory-api:latest
@@ -59,7 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: inventory-api
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: inventory-api
     service: nabis-inventory
@@ -77,7 +79,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: inventory-api-hpa
-  namespace: nabis-production
+  namespace: nabis-inventory
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

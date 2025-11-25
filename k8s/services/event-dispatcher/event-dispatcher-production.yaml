@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: event-dispatcher
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: event-dispatcher
     service: nabis-inventory
@@ -19,6 +19,8 @@ spec:
         service: nabis-inventory
         environment: production
     spec:
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: event-dispatcher
           image: brandonkorouscontainers.azurecr.io/nabis-event-dispatcher:latest

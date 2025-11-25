@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: admin-api
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: admin-api
     service: nabis-inventory
@@ -19,6 +19,8 @@ spec:
         service: nabis-inventory
         environment: production
     spec:
+      imagePullSecrets:
+        - name: acr-secret
       containers:
         - name: admin-api
           image: brandonkorouscontainers.azurecr.io/nabis-admin-api:latest
@@ -59,7 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: admin-api
-  namespace: nabis-production
+  namespace: nabis-inventory
   labels:
     app: admin-api
     service: nabis-inventory
