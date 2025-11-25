@@ -8,7 +8,7 @@ import {
 } from '../helpers/testUtils';
 
 describe('Inventory API - Integration Tests', () => {
-     let app: any;
+     let app: FastifyInstance;
 
      beforeAll(async () => {
           app = Fastify({
@@ -240,12 +240,13 @@ describe('Inventory API - Integration Tests', () => {
           });
 
           it('should handle unexpected errors in reserve endpoint', async () => {
-               const InventoryService =
-                    require('@nabis/shared/src/services/inventory-service').InventoryService;
-               const originalReserve = InventoryService.prototype.reserveInventoryForOrder;
+               const { InventoryService: InventoryServiceClass } = await import(
+                    '@nabis/shared/src/services/inventory-service'
+               );
+               const originalReserve = InventoryServiceClass.prototype.reserveInventoryForOrder;
 
                // Mock to throw a non-DomainError
-               InventoryService.prototype.reserveInventoryForOrder = jest
+               InventoryServiceClass.prototype.reserveInventoryForOrder = jest
                     .fn()
                     .mockRejectedValue(new Error('Unexpected database error'));
 
@@ -264,16 +265,17 @@ describe('Inventory API - Integration Tests', () => {
                expect(body.message).toBe('An unexpected error occurred');
 
                // Restore original method
-               InventoryService.prototype.reserveInventoryForOrder = originalReserve;
+               InventoryServiceClass.prototype.reserveInventoryForOrder = originalReserve;
           });
 
           it('should handle unexpected errors in release endpoint', async () => {
-               const InventoryService =
-                    require('@nabis/shared/src/services/inventory-service').InventoryService;
-               const originalRelease = InventoryService.prototype.releaseInventoryForOrder;
+               const { InventoryService: InventoryServiceClass } = await import(
+                    '@nabis/shared/src/services/inventory-service'
+               );
+               const originalRelease = InventoryServiceClass.prototype.releaseInventoryForOrder;
 
                // Mock to throw a non-DomainError
-               InventoryService.prototype.releaseInventoryForOrder = jest
+               InventoryServiceClass.prototype.releaseInventoryForOrder = jest
                     .fn()
                     .mockRejectedValue(new Error('Unexpected database error'));
 
@@ -292,16 +294,17 @@ describe('Inventory API - Integration Tests', () => {
                expect(body.message).toBe('An unexpected error occurred');
 
                // Restore original method
-               InventoryService.prototype.releaseInventoryForOrder = originalRelease;
+               InventoryServiceClass.prototype.releaseInventoryForOrder = originalRelease;
           });
 
           it('should handle unexpected errors in get inventory endpoint', async () => {
-               const InventoryService =
-                    require('@nabis/shared/src/services/inventory-service').InventoryService;
-               const originalGet = InventoryService.prototype.getAvailableInventory;
+               const { InventoryService: InventoryServiceClass } = await import(
+                    '@nabis/shared/src/services/inventory-service'
+               );
+               const originalGet = InventoryServiceClass.prototype.getAvailableInventory;
 
                // Mock to throw a non-DomainError
-               InventoryService.prototype.getAvailableInventory = jest
+               InventoryServiceClass.prototype.getAvailableInventory = jest
                     .fn()
                     .mockRejectedValue(new Error('Database connection lost'));
 
@@ -316,7 +319,7 @@ describe('Inventory API - Integration Tests', () => {
                expect(body.message).toBe('An unexpected error occurred');
 
                // Restore original method
-               InventoryService.prototype.getAvailableInventory = originalGet;
+               InventoryServiceClass.prototype.getAvailableInventory = originalGet;
           });
      });
 });

@@ -121,21 +121,29 @@ export async function registerInventoryRoutes(app: FastifyInstance) {
                          );
 
                          const totalAvailable = batches.reduce(
-                              (sum: number, batch: any) => sum + batch.availableQuantity,
+                              (sum: number, batch: { availableQuantity: number }) =>
+                                   sum + batch.availableQuantity,
                               0
                          );
 
                          reply.send({
                               skuCode: params.sku,
                               totalAvailable,
-                              batches: batches.map((b: any) => ({
-                                   id: b.id,
-                                   externalBatchId: b.externalBatchId,
-                                   lotNumber: b.lotNumber,
-                                   availableQuantity: b.availableQuantity,
-                                   totalQuantity: b.totalQuantity,
-                                   expiresAt: b.expiresAt?.toISOString(),
-                              })),
+                              batches: batches.map(
+                                   (b: {
+                                        id: number;
+                                        externalBatchId: string;
+                                        lotNumber: string;
+                                        availableQuantity: number;
+                                   }) => ({
+                                        id: b.id,
+                                        externalBatchId: b.externalBatchId,
+                                        lotNumber: b.lotNumber,
+                                        availableQuantity: b.availableQuantity,
+                                        totalQuantity: b.totalQuantity,
+                                        expiresAt: b.expiresAt?.toISOString(),
+                                   })
+                              ),
                          });
                     });
                } catch (error) {

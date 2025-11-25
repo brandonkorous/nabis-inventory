@@ -51,7 +51,7 @@ export interface OrderReservation {
 export interface DomainEvent {
      id: number;
      type: string;
-     payload: Record<string, any>;
+     payload: Record<string, unknown>;
      status: 'PENDING' | 'SENT' | 'FAILED';
      createdAt: Date;
 }
@@ -86,7 +86,7 @@ export interface WmsSnapshot {
      skuBatchId?: number;
      orderableQuantity: number;
      unallocatableQuantity?: number;
-     metadata?: Record<string, any>;
+     metadata?: Record<string, unknown>;
 }
 
 export interface WmsSyncRequest {

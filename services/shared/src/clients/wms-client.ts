@@ -103,9 +103,16 @@ export class WmsHttpClient implements WmsClient {
                throw new WmsApiError(response.status, await response.text());
           }
 
-          const data = (await response.json()) as { batches: any[] };
+          const data = (await response.json()) as {
+               batches: Array<{
+                    batchId: string;
+                    internalId: number;
+                    available: number;
+                    damaged?: number;
+               }>;
+          };
 
-          return data.batches.map((batch: any) => ({
+          return data.batches.map((batch) => ({
                wmsSkuBatchId: batch.batchId,
                skuBatchId: batch.internalId,
                orderableQuantity: batch.available,

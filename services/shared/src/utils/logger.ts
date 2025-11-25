@@ -2,7 +2,7 @@ import pino from 'pino';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
-const loggerConfig: any = {
+const loggerConfig: pino.LoggerOptions = {
      level: process.env.LOG_LEVEL || 'info',
      formatters: {
           level: (label: string) => ({ level: label }),
@@ -31,6 +31,6 @@ if (isDevelopment) {
 
 export const logger = pino(loggerConfig);
 
-export function createChildLogger(context: Record<string, any>) {
+export function createChildLogger(context: Record<string, unknown>) {
      return logger.child(context);
 }

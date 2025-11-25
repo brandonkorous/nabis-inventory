@@ -1,4 +1,5 @@
 import { pool } from '@nabis/shared/src/db/client';
+import type { PoolClient } from 'pg';
 
 /**
  * Test utilities for database setup and teardown
@@ -106,7 +107,9 @@ export async function getReservationCount(orderId: string): Promise<number> {
 /**
  * Get domain events for an aggregate
  */
-export async function getDomainEvents(status: string = 'PENDING'): Promise<any[]> {
+export async function getDomainEvents(
+     status: string = 'PENDING'
+): Promise<Array<Record<string, unknown>>> {
      const result = await pool.query(
           `SELECT * FROM domain_event
      WHERE status = $1
@@ -139,7 +142,7 @@ export async function waitFor(
 /**
  * Execute a function with a PoolClient from the pool
  */
-export async function withClient<T>(fn: (client: any) => Promise<T>): Promise<T> {
+export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
      const client = await pool.connect();
      try {
           return await fn(client);

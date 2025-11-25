@@ -34,9 +34,9 @@ describe('InventoryService - Concurrency', () => {
                          });
                          await client.query('COMMIT');
                          return { success: true };
-                    } catch (err: any) {
+                    } catch (err: unknown) {
                          await client.query('ROLLBACK');
-                         return { error: err.message };
+                         return { error: err instanceof Error ? err.message : String(err) };
                     } finally {
                          client.release();
                     }
@@ -72,9 +72,9 @@ describe('InventoryService - Concurrency', () => {
                          });
                          await client.query('COMMIT');
                          return { success: true };
-                    } catch (err: any) {
+                    } catch (err: unknown) {
                          await client.query('ROLLBACK');
-                         return { error: err.message };
+                         return { error: err instanceof Error ? err.message : String(err) };
                     } finally {
                          client.release();
                     }
@@ -102,9 +102,9 @@ describe('InventoryService - Concurrency', () => {
                          });
                          await client.query('COMMIT');
                          return { success: true };
-                    } catch (err: any) {
+                    } catch (err: unknown) {
                          await client.query('ROLLBACK');
-                         return { error: err.message };
+                         return { error: err instanceof Error ? err.message : String(err) };
                     } finally {
                          client.release();
                     }
@@ -112,7 +112,7 @@ describe('InventoryService - Concurrency', () => {
 
                await Promise.all(promises);
 
-               const available = await getAvailableQuantity(batchId);
+               // Batch 1 should still have all quantity locked
 
                // Should have processed transactions serially, preventing oversell
                expect(available).toBeGreaterThanOrEqual(0);
@@ -190,9 +190,9 @@ describe('InventoryService - Concurrency', () => {
                          });
                          await client.query('COMMIT');
                          return { success: true };
-                    } catch (err: any) {
+                    } catch (err: unknown) {
                          await client.query('ROLLBACK');
-                         return { error: err.message };
+                         return { error: err instanceof Error ? err.message : String(err) };
                     } finally {
                          client.release();
                     }

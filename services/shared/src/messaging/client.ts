@@ -92,7 +92,7 @@ export async function getChannel(): Promise<Channel> {
 export async function publishEvent(
      exchange: string,
      routingKey: string,
-     payload: Record<string, any>
+     payload: Record<string, unknown>
 ): Promise<void> {
      const ch = await getChannel();
      const content = Buffer.from(JSON.stringify(payload));

@@ -295,13 +295,13 @@ This project is configured for deployment to **Azure Kubernetes Service (AKS)** 
 
 Configure these in **Settings → Secrets and variables → Actions**. See [.github/SECRETS.md](./.github/SECRETS.md) for exact values.
 
-| Secret                     | Description                        | Example                         |
-| -------------------------- | ---------------------------------- | ------------------------------- |
-| `AZURE_CREDENTIALS`        | Service principal JSON credentials | See SECRETS.md for command      |
-| `AZURE_RESOURCE_GROUP`     | Azure resource group name          | `rg-korous-kube-wu2`            |
+| Secret                     | Description                        | Example                              |
+| -------------------------- | ---------------------------------- | ------------------------------------ |
+| `AZURE_CREDENTIALS`        | Service principal JSON credentials | See SECRETS.md for command           |
+| `AZURE_RESOURCE_GROUP`     | Azure resource group name          | `rg-korous-kube-wu2`                 |
 | `ACR_LOGIN_SERVER`         | Azure Container Registry server    | `brandonkorouscontainers.azurecr.io` |
-| `AKS_CLUSTER_NAME_PROD`    | Production AKS cluster name        | `aks-korous-kube-wu2`           |
-| `AKS_CLUSTER_NAME_STAGING` | Staging AKS cluster name           | `aks-stage-korous-kube-wu2`     |
+| `AKS_CLUSTER_NAME_PROD`    | Production AKS cluster name        | `aks-korous-kube-wu2`                |
+| `AKS_CLUSTER_NAME_STAGING` | Staging AKS cluster name           | `aks-stage-korous-kube-wu2`          |
 
 **Note:** ACR authentication is handled through the Azure service principal - no separate ACR credentials needed.
 
@@ -312,11 +312,11 @@ These must be configured in Kubernetes ConfigMaps and Secrets. See [docs/deploym
 #### Required Variables (All Services)
 
 - `DATABASE_URL` (Secret) - PostgreSQL connection string
-  - Production: `postgresql://nabis:nabis_password@postgres.nabis-production.svc.cluster.local:5432/nabis_inventory`
-  - Staging: `postgresql://nabis:nabis_password@postgres.nabis-staging.svc.cluster.local:5432/nabis_inventory`
+     - Production: `postgresql://nabis:nabis_password@postgres.nabis-production.svc.cluster.local:5432/nabis_inventory`
+     - Staging: `postgresql://nabis:nabis_password@postgres.nabis-staging.svc.cluster.local:5432/nabis_inventory`
 - `AMQP_URL` (Secret) - RabbitMQ connection string
-  - Production: `amqp://nabis:nabis_password@rabbitmq.nabis-production.svc.cluster.local:5672`
-  - Staging: `amqp://nabis:nabis_password@rabbitmq.nabis-staging.svc.cluster.local:5672`
+     - Production: `amqp://nabis:nabis_password@rabbitmq.nabis-production.svc.cluster.local:5672`
+     - Staging: `amqp://nabis:nabis_password@rabbitmq.nabis-staging.svc.cluster.local:5672`
 - `NODE_ENV` (ConfigMap) - Runtime environment: `production`, `staging`, `development`
 - `LOG_LEVEL` (ConfigMap) - Logging level: `info`, `debug`, `warn`, `error`
 
@@ -379,9 +379,9 @@ These must be configured in Kubernetes ConfigMaps and Secrets. See [docs/deploym
 - Deploy to staging or production environment (selected at runtime)
 - Connects to specified AKS cluster
 - Applies Kubernetes manifests:
-  - Infrastructure (PostgreSQL, RabbitMQ)
-  - Database migrations
-  - Application services with environment-specific configs
+     - Infrastructure (PostgreSQL, RabbitMQ)
+     - Database migrations
+     - Application services with environment-specific configs
 - Controlled deployments - no automatic deploys
 
 ### Quick Deployment Setup

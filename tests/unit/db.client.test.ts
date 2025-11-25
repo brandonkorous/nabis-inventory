@@ -1,3 +1,5 @@
+import { pool, withTransaction } from '@nabis/shared/src/db/client';
+import type { PoolClient } from 'pg';
 import { pool, checkConnection, withTransaction } from '@nabis/shared/src/db/client';
 
 describe('Database Client', () => {
@@ -43,7 +45,7 @@ describe('Database Client', () => {
           });
 
           it('should pass client to callback function', async () => {
-               let capturedClient: any;
+               let capturedClient: PoolClient | undefined;
                await withTransaction(async (client) => {
                     capturedClient = client;
                     expect(client.query).toBeDefined();

@@ -293,11 +293,11 @@ describe('Admin API - Integration Tests', () => {
 
      describe('Error handling', () => {
           it('should handle unexpected errors in WMS sync endpoint', async () => {
-               const messagingClient = require('@nabis/shared/src/messaging/client');
-               const originalGetChannel = messagingClient.getChannel;
+               const messagingClientModule = await import('@nabis/shared/src/messaging/client');
+               const originalGetChannel = messagingClientModule.getChannel;
 
                // Mock to throw a non-standard error
-               messagingClient.getChannel = jest
+               (messagingClientModule as { getChannel: unknown }).getChannel = jest
                     .fn()
                     .mockRejectedValue(new Error('RabbitMQ connection lost'));
 
@@ -317,11 +317,11 @@ describe('Admin API - Integration Tests', () => {
                expect(body.message).toBe('Failed to queue sync request');
 
                // Restore original method
-               messagingClient.getChannel = originalGetChannel;
+               (messagingClientModule as { getChannel: unknown }).getChannel = originalGetChannel;
           });
 
           it('should handle unexpected errors in sync status endpoint', async () => {
-               const pool = require('@nabis/shared/src/db/client').pool;
+               const { pool } = await import('@nabis/shared/src/db/client');
                const originalQuery = pool.query;
 
                // Mock to throw a database error
@@ -342,7 +342,7 @@ describe('Admin API - Integration Tests', () => {
           });
 
           it('should handle unexpected errors in inventory adjustment endpoint', async () => {
-               const pool = require('@nabis/shared/src/db/client').pool;
+               const { pool } = await import('@nabis/shared/src/db/client');
                const originalConnect = pool.connect;
 
                // Mock to throw a non-DomainError

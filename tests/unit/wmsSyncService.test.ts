@@ -113,7 +113,7 @@ describe('WmsSyncService (Unit)', () => {
           it('should skip reconciliation when skuBatchId is null', async () => {
                const snapshot: WmsSnapshot = {
                     wmsSkuBatchId: 'WMS-UNKNOWN',
-                    skuBatchId: null as any,
+                    skuBatchId: undefined,
                     orderableQuantity: 50,
                     unallocatableQuantity: 0,
                };

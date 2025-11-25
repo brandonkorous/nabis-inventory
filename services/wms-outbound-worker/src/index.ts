@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
-import { getChannel, WMS_OUTBOUND_QUEUE, ConsumeMessage } from '@nabis/shared/src/messaging/client';
+import { getChannel, WMS_OUTBOUND_QUEUE } from '@nabis/shared/src/messaging/client';
+import type { ConsumeMessage, Channel } from 'amqplib';
 import { pool } from '@nabis/shared/src/db/client';
 import { createWmsClient } from '@nabis/shared/src/clients/wms-client';
 import { WmsApiError } from '@nabis/shared/src/utils/errors';
@@ -48,7 +49,11 @@ class WmsOutboundWorker {
           }
      }
 
-     private async handleAllocated(payload: any): Promise<void> {
+     private async handleAllocated(payload: {
+          orderId: string;
+          skuBatchId: number;
+          quantity: number;
+     }): Promise<void> {
           const { orderId, skuBatchId, quantity } = payload;
 
           // Get external batch ID
@@ -89,7 +94,11 @@ class WmsOutboundWorker {
           logger.info({ orderId, skuBatchId }, 'WMS allocation completed');
      }
 
-     private async handleReleased(payload: any): Promise<void> {
+     private async handleReleased(payload: {
+          orderId: string;
+          skuBatchId: number;
+          quantity: number;
+     }): Promise<void> {
           const { orderId, skuBatchId, quantity } = payload;
 
           const { rows } = await pool.query(
@@ -127,7 +136,11 @@ class WmsOutboundWorker {
           logger.info({ orderId, skuBatchId }, 'WMS release completed');
      }
 
-     private async handleError(channel: any, msg: ConsumeMessage, error: unknown): Promise<void> {
+     private async handleError(
+          channel: Channel,
+          msg: ConsumeMessage,
+          error: unknown
+     ): Promise<void> {
           if (error instanceof WmsApiError) {
                if (error.retriable) {
                     // Requeue with delay for retriable errors (429, 503, 504)

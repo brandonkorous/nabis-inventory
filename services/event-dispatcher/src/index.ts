@@ -35,7 +35,7 @@ class EventDispatcher {
                const { rows: events } = await client.query<{
                     id: number;
                     type: string;
-                    payload: any;
+                    payload: Record<string, unknown>;
                     created_at: Date;
                }>(
                     `

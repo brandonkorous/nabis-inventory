@@ -45,7 +45,10 @@ class WmsSyncWorker {
           }
      }
 
-     private async handleForceSync(payload: any): Promise<void> {
+     private async handleForceSync(payload: {
+          syncRequestId: string;
+          skuBatchId?: number;
+     }): Promise<void> {
           const { syncRequestId, skuBatchId } = payload;
 
           logger.info({ syncRequestId, skuBatchId }, 'Handling force sync');
