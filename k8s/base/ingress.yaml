@@ -1,0 +1,104 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: nabis-encrypt
+  namespace: nabis-inventory
+spec:
+  acme:
+    email: me@brandonkorous.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: nabis-encrypt-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+# Inventory API Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nabis-inventory-api-ingress
+  namespace: nabis-inventory
+  annotations:
+    # NGINX Ingress Controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    
+    # Body size
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-max-age: "3600"
+    
+    # Certificate management (cert-manager)
+    cert-manager.io/cluster-issuer: "nabis-encrypt"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - nabis.brandonkorous.com
+    secretName: nabis-inventory-api-tls
+  rules:
+  - host: nabis.brandonkorous.com
+    http:
+      paths:
+      # Inventory API - main service for reserve/release/query operations
+      - path: /inventory(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: inventory-api
+            port:
+              number: 3000
+      
+      # Admin API - administrative operations
+      - path: /admin(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: admin-api
+            port:
+              number: 3001
+      
+      # Event Dispatcher - processes domain events
+      - path: /event-dispatcher(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: event-dispatcher
+            port:
+              number: 3002
+      
+      # WMS Sync Worker - syncs inventory from WMS
+      - path: /wms-sync(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: wms-sync-worker
+            port:
+              number: 3003
+      
+      # WMS Outbound Worker - processes outbound events
+      - path: /wms-outbound(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: wms-outbound-worker
+            port:
+              number: 3004

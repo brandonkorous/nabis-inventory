@@ -153,10 +153,14 @@ jobs:
               uses: azure/login@v2
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
+              timeout-minutes: 2
 
             - name: Login to Azure Container Registry
               run: |
-                  az acr login --name ${{ secrets.ACR_LOGIN_SERVER }}
+                  # Use access token to avoid credential manager issues
+                  TOKEN=$(az acr login --name ${{ secrets.ACR_NAME }} --expose-token --output tsv --query accessToken)
+                  echo $TOKEN | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u 00000000-0000-0000-0000-000000000000 --password-stdin
+              timeout-minutes: 2
 
             - name: Get image tag
               id: image-tag
