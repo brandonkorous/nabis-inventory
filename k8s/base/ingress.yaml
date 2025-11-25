@@ -75,30 +75,3 @@ spec:
             name: admin-api
             port:
               number: 3001
-      
-      # Event Dispatcher - processes domain events
-      - path: /event-dispatcher(/|$)(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: event-dispatcher
-            port:
-              number: 3002
-      
-      # WMS Sync Worker - syncs inventory from WMS
-      - path: /wms-sync(/|$)(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: wms-sync-worker
-            port:
-              number: 3003
-      
-      # WMS Outbound Worker - processes outbound events
-      - path: /wms-outbound(/|$)(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: wms-outbound-worker
-            port:
-              number: 3004
