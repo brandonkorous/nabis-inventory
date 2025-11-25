@@ -40,15 +40,13 @@ jobs:
                     BRANCH="develop"
                   fi
 
-                  # Get the latest commit SHA from the branch
+                  # Get the latest commit SHA from the branch (8 characters to match CI workflow)
                   COMMIT_SHA=$(git rev-parse ${BRANCH})
-                  SHORT_SHA=${COMMIT_SHA:0:7}
+                  SHORT_SHA=${COMMIT_SHA:0:8}
                   IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
                   echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-                  echo "Deploying image tag: ${IMAGE_TAG}"
-
-            - name: Azure Login
+                  echo "Deploying image tag: ${IMAGE_TAG}"            - name: Azure Login
               uses: azure/login@v2
               with:
                   creds: ${{ secrets.AZURE_CREDENTIALS }}
