@@ -18,7 +18,7 @@ on:
                 description: "Run database migrations"
                 required: false
                 type: boolean
-                default: true
+                default: false
 
 jobs:
     deploy:
@@ -103,10 +103,26 @@ jobs:
                                 cpu: '200m'
                   EOF
 
-                  # Wait for migration to complete
-                  kubectl wait --for=condition=complete --timeout=300s job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+                  # Wait a bit for pod to start
+                  sleep 10
 
-                  # Show migration logs
+                  # Show job status
+                  kubectl get job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+                  kubectl get pods -l job-name=db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+
+                  # Show pod logs (even if still running)
+                  kubectl logs -l job-name=db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }} --tail=50 || true
+
+                  # Wait for migration to complete (10 minutes)
+                  kubectl wait --for=condition=complete --timeout=600s job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }} || {
+                    echo "Migration timed out or failed. Showing pod details:"
+                    kubectl describe pods -l job-name=db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
+                    kubectl logs -l job-name=db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }} --tail=100
+                    exit 1
+                  }
+
+                  # Show final migration logs
+                  echo "Migration completed successfully:"
                   kubectl logs job/db-migration-${{ github.run_number }} -n ${{ steps.namespace.outputs.namespace }}
 
             - name: Deploy services
